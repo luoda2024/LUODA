@@ -2212,6 +2212,65 @@ impl Group {
     // ...
 }
 
+impl Config {
+    fn file_(suffix: &str) -> PathBuf {
+        let name = format!("{}{}", *APP_NAME.read().unwrap(), suffix);  // 已经正确使用
+        Config::with_extension(Self::path(name))
+    }
+    pub fn log_path() -> PathBuf {
+        #[cfg(target_os = "macos")]
+        {
+            if let Some(path) = dirs_next::home_dir().as_mut() {
+                path.push(format!("Library/Logs/{}", *APP_NAME.read().unwrap()));  // 移除了 .clone()
+                return path.clone();
+            }
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let mut path = Self::get_home();
+            path.push(format!(".local/share/logs/{}", *APP_NAME.read().unwrap()));  // 移除了 .clone()
+            std::fs::create_dir_all(&path).ok();
+            return path;
+        }
+        #[cfg(target_os = "android")]
+        {
+            let mut path = Self::get_home();
+            path.push(format!("{}/Logs", *APP_NAME.read().unwrap()));  // 移除了 .clone()
+            std::fs::create_dir_all(&path).ok();
+            return path;
+        }
+        if let Some(path) = Self::path("").parent() {
+            let mut path: PathBuf = path.into();
+            path.push("log");
+            return path;
+        }
+        "".into()
+    }
+    pub fn ipc_path(postfix: &str) -> String {
+        #[cfg(windows)]
+        {
+            format!(
+                "\\\\.\\pipe\\{}\\query{}",
+                *APP_NAME.read().unwrap(),  // 移除了 .clone()
+                postfix
+            )
+        }
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            #[cfg(target_os = "android")]
+            let mut path: PathBuf =
+                format!("{}/{}", *APP_DIR.read().unwrap(), *APP_NAME.read().unwrap()).into();
+            #[cfg(not(target_os = "android"))]
+            let mut path: PathBuf = format!("/tmp/{}", *APP_NAME.read().unwrap()).into();
+            fs::create_dir(&path).ok();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o0777)).ok();
+            path.push(format!("ipc{postfix}"));
+            path.to_str().unwrap_or("").to_owned()
+        }
+    }
+}
+
     pub fn store(json: String) {
         if let Ok(mut file) = std::fs::File::create(Self::path()) {
             let data = compress(json.as_bytes());
