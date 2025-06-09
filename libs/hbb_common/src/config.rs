@@ -2079,9 +2079,12 @@ pub struct Ab {
 
 impl Ab {
     fn path() -> PathBuf {
-        let filename = format!("{}_ab", APP_NAME.read().unwrap().clone());
+        let filename = format!("{}_ab", APP_NAME.read().unwrap()); // 移除 .clone()
         Config::path(filename)
     }
+    // ...
+}
+
 
     pub fn store(json: String) {
         if let Ok(mut file) = std::fs::File::create(Self::path()) {
@@ -2203,9 +2206,11 @@ pub struct Group {
 
 impl Group {
     fn path() -> PathBuf {
-        let filename = format!("{}_group", APP_NAME.read().unwrap().clone());
+        let filename = format!("{}_group", APP_NAME.read().unwrap()); // 移除 .clone()
         Config::path(filename)
     }
+    // ...
+}
 
     pub fn store(json: String) {
         if let Ok(mut file) = std::fs::File::create(Self::path()) {
@@ -2975,3 +2980,13 @@ mod tests {
         }
     }
 }
+
+
+let filename = format!("{}_ab", APP_NAME.read().map_err(|e| {
+    log::error!("Failed to read APP_NAME: {}", e);
+    "default_name".to_string()
+})?);
+
+let app_name = APP_NAME.read().unwrap().clone();
+let filename = format!("{}_ab", app_name);
+
